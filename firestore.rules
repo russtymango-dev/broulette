@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if the requesting user is in the game doc's adminUids array
+    function isAdmin(gameId) {
+      return request.auth.uid in get(/databases/$(database)/documents/games/$(gameId)).data.adminUids;
+    }
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Game document — anyone authed can read, only admin can write.
+    // Allow update if adminUids is empty (first admin registration).
+    match /games/{gameId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (
+        isAdmin(gameId) ||
+        resource.data.adminUids.size() == 0
+      );
+    }
+
+    // Players — anyone authed can read/update (needed for transfers, balance changes)
+    // Admin can create/delete (approval flow, restart)
+    match /games/{gameId}/players/{playerId} {
+      allow read: if isAuth();
+      allow update: if isAuth();
+      allow create, delete: if isAuth() && isAdmin(gameId);
+    }
+
+    // Registration requests — anyone authed can create/read, admin resolves
+    match /games/{gameId}/registrationRequests/{reqId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAuth() && isAdmin(gameId);
+    }
+
+    // Sip requests — players create, admin resolves/deletes (restart)
+    match /games/{gameId}/sipRequests/{reqId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAuth() && isAdmin(gameId);
+    }
+
+    // Bets — anyone can read/create/update, admin can delete (restart)
+    match /games/{gameId}/bets/{betId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth();
+      allow delete: if isAuth() && isAdmin(gameId);
+
+      match /wagers/{wagerId} {
+        allow read: if isAuth();
+        allow create: if isAuth();
+        allow update, delete: if isAuth() && isAdmin(gameId);
+      }
+    }
+
+    // Roulette bets — players create, anyone can update/delete (round cleanup)
+    match /games/{gameId}/rouletteBets/{betId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAuth();
+    }
+
+    // Roulette history — anyone authed can read/write/delete
+    match /games/{gameId}/rouletteHistory/{roundId} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    // Transfers — players create, anyone reads, admin deletes (restart)
+    match /games/{gameId}/transfers/{transferId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow delete: if isAuth() && isAdmin(gameId);
+    }
+
+    // Activity log — anyone can read/create, admin can delete (restart)
+    match /games/{gameId}/activityLog/{logId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow delete: if isAuth() && isAdmin(gameId);
+    }
+  }
+}

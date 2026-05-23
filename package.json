@@ -1,0 +1,17 @@
+{
+  "name": "broulette",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Broulette — Izzy & Kyle's wedding drinking game",
+  "scripts": {
+    "dev": "npx firebase emulators:start --import=./seed-data --export-on-exit=./seed-data",
+    "seed": "node scripts/seed.js",
+    "serve": "npx http-server Broulette -p 3000 -c-1",
+    "emulators": "npx firebase emulators:start",
+    "deploy": "npx firebase deploy --only firestore:rules,firestore:indexes"
+  },
+  "devDependencies": {
+    "firebase-admin": "^13.10.0",
+    "firebase-tools": "^13.29.0"
+  }
+}
